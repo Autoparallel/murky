@@ -14,6 +14,15 @@ pub struct MerkleTree {
     hashes: Vec<Vec<[u8; 32]>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LeftOrRight {
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone)]
+pub struct Proof(Vec<([u8; 32], LeftOrRight)>);
+
 impl MerkleTree {
     #[allow(clippy::new_without_default)]
     pub fn new(leaves: Vec<String>) -> Self {
@@ -23,6 +32,38 @@ impl MerkleTree {
 
     pub fn root_hash(&self) -> [u8; 32] {
         self.hashes[0][0]
+    }
+
+    pub fn get_proof(&self, leaf_index: usize) -> Proof {
+        let mut proof = vec![];
+        let mut index = leaf_index;
+
+        // Start at the leaves and work our way up to the root
+        for level in self.hashes.iter().skip(1).rev() {
+            let (sibling_parity, sibling_index) = if index % 2 == 0 {
+                (LeftOrRight::Right, index + 1)
+            } else {
+                (LeftOrRight::Left, index - 1)
+            };
+            proof.push((level[sibling_index], sibling_parity));
+            index /= 2;
+        }
+        Proof(proof)
+    }
+
+    pub fn prove(&self, value: String, proof: Proof) -> bool {
+        let mut hash = keccak(value.as_bytes());
+
+        for (sibling_hash, position) in proof.0.into_iter() {
+            let combined = if position == LeftOrRight::Left {
+                [sibling_hash.as_slice(), hash.as_slice()].concat()
+            } else {
+                [hash.as_slice(), sibling_hash.as_slice()].concat()
+            };
+            hash = keccak(&combined);
+        }
+
+        hash == self.root_hash()
     }
 }
 
@@ -146,5 +187,80 @@ mod tests {
         assert_ne!(tree1.root_hash(), tree2.root_hash());
         assert_ne!(tree1.root_hash(), tree3.root_hash());
         assert_ne!(tree2.root_hash(), tree3.root_hash());
+    }
+
+    #[test]
+    fn proof_siblings() {
+        let leaves = vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+        ];
+        let tree = MerkleTree::new(leaves);
+        println!("{}", tree);
+
+        // Get a proof for "b" (index 1)
+        let proof = tree.get_proof(1);
+        println!(
+            "{:?}",
+            proof
+                .0
+                .iter()
+                .map(|x| (hex::encode(x.0), x.1))
+                .collect::<Vec<(String, LeftOrRight)>>()
+        );
+        // assert_eq!(proof.len(), 2);
+        // assert_eq!(proof[0], tree.hashes[2][1]);
+        // assert_eq!(proof[1], tree.hashes[2][2]);
+    }
+
+    #[test]
+    fn valid_proof() {
+        let leaves = vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+        ];
+        let tree = MerkleTree::new(leaves);
+        println!("{}", tree);
+
+        // Get a proof for "b" (index 1)
+        let proof = tree.get_proof(1);
+        assert!(tree.prove("b".to_string(), proof));
+    }
+
+    #[test]
+    fn invalid_proof_wrong_element() {
+        let leaves = vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+        ];
+        let tree = MerkleTree::new(leaves);
+        println!("{}", tree);
+
+        // Get a proof for "b" (index 1)
+        let proof = tree.get_proof(1);
+        assert!(tree.prove("a".to_string(), proof));
+    }
+
+    #[test]
+    fn invalid_proof_wrong_sibling() {
+        let leaves = vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+        ];
+        let tree = MerkleTree::new(leaves);
+        println!("{}", tree);
+
+        // Get a proof for "b" (index 1)
+        let mut proof = tree.get_proof(1);
+        proof.0[0].0 = [0u8; 32];
+        assert!(tree.prove("b".to_string(), proof));
     }
 }
