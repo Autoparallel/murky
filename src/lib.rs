@@ -21,8 +21,8 @@ impl MerkleTree {
         MerkleTree { leaves, hashes }
     }
 
-    pub fn insert(&mut self, data: String) {
-        self.leaves.push(data);
+    pub fn root_hash(&self) -> [u8; 32] {
+        self.hashes[0][0]
     }
 }
 
@@ -118,5 +118,33 @@ mod tests {
         assert_eq!(tree.hashes[1].len(), 2);
         assert_eq!(tree.hashes[2].len(), 3);
         assert_eq!(tree.hashes[3].len(), 5);
+    }
+
+    #[test]
+    fn test_different_value() {
+        let tree1 = MerkleTree::new(vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+            "e".to_string(),
+        ]);
+        let tree2 = MerkleTree::new(vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+            "f".to_string(),
+        ]);
+        let tree3 = MerkleTree::new(vec![
+            "b".to_string(),
+            "a".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+            "e".to_string(),
+        ]);
+        assert_ne!(tree1.root_hash(), tree2.root_hash());
+        assert_ne!(tree1.root_hash(), tree3.root_hash());
+        assert_ne!(tree2.root_hash(), tree3.root_hash());
     }
 }
