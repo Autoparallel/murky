@@ -87,7 +87,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn basic_tree() {
+    fn even_leaf_tree() {
         let leaves = vec![
             "a".to_string(),
             "b".to_string(),
@@ -96,8 +96,27 @@ mod tests {
         ];
         let tree = MerkleTree::new(leaves);
         println!("{}", tree);
-        // assert_eq!(tree.hashes.len(), 2);
-        // assert_eq!(tree.hashes[0].len(), 4);
-        // assert_eq!(tree.hashes[1].len(), 2);
+        assert_eq!(tree.hashes.len(), 3);
+        assert_eq!(tree.hashes[0].len(), 1);
+        assert_eq!(tree.hashes[1].len(), 2);
+        assert_eq!(tree.hashes[2].len(), 4);
+    }
+
+    #[test]
+    fn odd_leaf_tree() {
+        let leaves = vec![
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+            "e".to_string(),
+        ];
+        let tree = MerkleTree::new(leaves);
+        println!("{}", tree);
+        assert_eq!(tree.hashes.len(), 4);
+        assert_eq!(tree.hashes[0].len(), 1);
+        assert_eq!(tree.hashes[1].len(), 2);
+        assert_eq!(tree.hashes[2].len(), 3);
+        assert_eq!(tree.hashes[3].len(), 5);
     }
 }
